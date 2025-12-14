@@ -22,7 +22,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-print("🚀 Starting API Server...")
+print("Starting API Server...")
 engine = PricingEngine()# This loads your AI models instantly
 
 # 2. DEFINE REQUEST FORMAT (Data Validation)

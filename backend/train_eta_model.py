@@ -7,20 +7,52 @@ import joblib
 
 # 1. LOAD DATA
 print("⏳ Loading data...")
-df = pd.read_csv("simulated_ride_data.csv")
+import os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+df = pd.read_csv(os.path.join(BASE_DIR, "simulated_ride_data.csv"))
 
 # 2. FEATURE ENGINEERING (Preparing the data)
-# The model can't read "2024-01-01 08:30:00" directly. 
-# We must break it down into numbers: "Hour 8", "Monday (0)".
-print("🛠️ Processing features...")
+print("🛠️ Processing features (Weather, Traffic, etc.)...")
 
 df['timestamp'] = pd.to_datetime(df['timestamp'])
 df['hour'] = df['timestamp'].dt.hour
 df['day_of_week'] = df['timestamp'].dt.dayofweek
 
+# Normalize column names to match what Pricing Engine expects
+df.rename(columns={'trip_distance': 'trip_distance_km', 'trip_duration': 'trip_duration_min'}, inplace=True)
+
+# ENCODING CATEGORICAL FEATURES
+# traffic_condition (Ordinal can be better than one-hot for "intensity")
+traffic_map = {"Free Flow": 0, "Low": 0, "Medium": 1, "High": 2, "Heavy Rain": 3}
+if 'traffic_condition' in df.columns:
+    df['traffic_level'] = df['traffic_condition'].map(traffic_map).fillna(1)
+else:
+    df['traffic_level'] = 1 # Default
+
+# weather (One-Hot Encoding)
+expected_weather_cols = ['weather_Sunny', 'weather_Cloudy', 'weather_Rainy']
+
+if 'weather' in df.columns:
+    df = pd.get_dummies(df, columns=['weather'], prefix='weather', drop_first=False)
+    for col in expected_weather_cols:
+        if col not in df.columns:
+            df[col] = 0
+else:
+    # If using old data without weather, default to sunny
+    df['weather_Sunny'] = 1
+    df['weather_Cloudy'] = 0
+    df['weather_Rainy'] = 0
+
 # DEFINE INPUTS (X) AND OUTPUT (y)
-# We use these columns to predict the duration
-features = ['trip_distance_km', 'traffic_multiplier', 'hour', 'day_of_week']
+features = [
+    'trip_distance_km', 'hour', 'day_of_week', 
+    'traffic_level', 
+    'weather_Sunny', 'weather_Cloudy', 'weather_Rainy'
+]
+# Add passenger_count if exists
+if 'passenger_count' in df.columns:
+    features.append('passenger_count')
+
 target = 'trip_duration_min'
 
 X = df[features]
@@ -32,8 +64,8 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 
 # 4. TRAIN THE MODEL
 # GradientBoosting is powerful for this type of regression task
-print("🤖 Training the ETA Model (this might take a few seconds)...")
-model = GradientBoostingRegressor(n_estimators=100, learning_rate=0.1, max_depth=5, random_state=42)
+print("🤖 Training the High-Accuracy ETA Model...")
+model = GradientBoostingRegressor(n_estimators=300, learning_rate=0.05, max_depth=6, random_state=42)
 model.fit(X_train, y_train)
 
 # 5. EVALUATE THE MODEL

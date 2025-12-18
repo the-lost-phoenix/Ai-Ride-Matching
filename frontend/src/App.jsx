@@ -51,7 +51,7 @@ function App() {
         user_preference: "balanced"
       }
 
-      const backendResponse = await axios.post('http://127.0.0.1:8000/ride/quote', payload)
+      const backendResponse = await axios.post(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/ride/quote`, payload)
       setResult(backendResponse.data)
 
     } catch (err) {

@@ -1,6 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware  # <--- IMPORT THIS
 from pydantic import BaseModel
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from pricing_engine import PricingEngine
 from datetime import datetime
 import random
